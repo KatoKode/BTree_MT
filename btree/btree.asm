@@ -28,6 +28,7 @@ extern pthread_rwlock_init
 extern pthread_rwlock_rdlock
 extern pthread_rwlock_wrlock
 extern pthread_rwlock_unlock
+; extern sched_yield
 extern memmove64
 extern sizeof_rwlock
 ;
@@ -206,12 +207,13 @@ b_borrow_from_next:
       pop       rsi
       mov       rdx, QWORD [rbp - 40]
       call      memmove64 wrt ..plt
-;   if ((rbx and 7) == 0) pause();  [x/grok]
-      inc       rbx
+;   if ((rbx and 7) == 0) sched_yield();  [x/grok]
       test      rbx, 7
-      jnz       .skip_pause_1
-      pause                  ; single-byte encoding: f3 90
-.skip_pause_1:
+      jnz       .skip_yield_1
+;      ALIGN_STACK_AND_CALL r12, sched_yield, wrt, ..plt
+      pause
+.skip_yield_1:
+      inc       rbx
       jmp       .object_move_loop
 ; }
 .object_move_break:
@@ -233,12 +235,13 @@ b_borrow_from_next:
       dec       rsi
       call      b_child_at
       pop       QWORD [rax]
-;     if ((rbx and 7) == 0) pause();  [x/grok]
-      inc       rbx
+;     if ((rbx and 7) == 0) sched_yield();  [x/grok]
       test      rbx, 7
-      jnz       .skip_pause_2
-      pause                  ; single-byte encoding: f3 90
-.skip_pause_2:
+      jnz       .skip_yield_2
+;      ALIGN_STACK_AND_CALL r12, sched_yield, wrt, ..plt
+      pause
+.skip_yield_2:
+      inc       rbx
       jmp       .child_move_loop
 ;   }
 .child_move_break:
@@ -313,6 +316,7 @@ b_borrow_from_prev:
 ; for (ssize_t x = child->nobj - 1; x >= 0; --x) {
       mov       rdi, QWORD [rbp - 24]
       mov       rbx, QWORD [rdi + b_node.nobj]
+      dec     rbx
 .object_move_loop:
       cmp       rbx, 0
       jl        .object_move_break
@@ -327,11 +331,12 @@ b_borrow_from_prev:
       pop       rsi
       mov       rdx, QWORD [rbp - 40]
       call      memmove64 wrt ..plt
-;   if ((rbx and 7) == 0) pause();  [x/grok]
+;   if ((rbx and 7) == 0) sched_yield();  [x/grok]
       test      rbx, 7
-      jnz       .skip_pause_1
-      pause                  ; single-byte encoding: f3 90
-.skip_pause_1:
+      jnz       .skip_yield_1
+;      ALIGN_STACK_AND_CALL r12, sched_yield, wrt, ..plt
+      pause
+.skip_yield_1:
       dec     rbx
       jmp       .object_move_loop
 ; }
@@ -354,11 +359,12 @@ b_borrow_from_prev:
       inc       rsi
       call      b_child_at
       pop       QWORD [rax]
-;     if ((rbx and 7) == 0) pause();  [x/grok]
+;     if ((rbx and 7) == 0) sched_yield();  [x/grok]
       test      rbx, 7
-      jnz       .skip_pause_2
-      pause                  ; single-byte encoding: f3 90
-.skip_pause_2:
+      jnz       .skip_yield_2
+;      ALIGN_STACK_AND_CALL r12, sched_yield, wrt, ..plt
+      pause
+.skip_yield_2:
       dec     rbx
       jmp       .child_move_loop
 ; }
@@ -1027,12 +1033,13 @@ b_find_key:
       inc       rax
       mov       QWORD [rbp - 40], rax
 .end_if_else:
-;   if ((rbx and 7) == 0) pause();  [x/grok]
+;   if ((rbx and 7) == 0) sched_yield();  [x/grok]
       inc       rbx
       test      rbx, 7
-      jnz       .skip_pause
-      pause                  ; single-byte encoding: f3 90
-.skip_pause:
+      jnz       .skip_yield
+;      ALIGN_STACK_AND_CALL r12, sched_yield, wrt, ..plt
+      pause
+.skip_yield:
       mov       rdi, QWORD [rbp - 8]
       mov       rax, QWORD [rbp - 48]
       jmp       .loop
@@ -1421,11 +1428,12 @@ b_insert_non_full:
       pop       rsi
       mov       rdx, QWORD [rbp - 40]
       call      memmove64 wrt ..plt
-;     if ((rbx and 7) == 0) pause();  [x/grok]
+;     if ((rbx and 7) == 0) sched_yield();  [x/grok]
       test      rbx, 7
-      jnz       .skip_pause_1
-      pause                  ; single-byte encoding: f3 90
-.skip_pause_1:
+      jnz       .skip_yield_1
+;      ALIGN_STACK_AND_CALL r12, sched_yield, wrt, ..plt
+      pause
+.skip_yield_1:
       dec       rbx
       mov       QWORD [rbp - 24], rbx
       jmp       .object_move_loop
@@ -1462,11 +1470,12 @@ b_insert_non_full:
       ALIGN_STACK_AND_CALL r12, rcx
       cmp       eax, 0
       jle       .child_find_break
-;     if ((rbx and 7) == 0) pause();  [x/grok]
+;     if ((rbx and 7) == 0) sched_yield();  [x/grok]
       test      rbx, 7
-      jnz       .skip_pause_2
-      pause                  ; single-byte encoding: f3 90
-.skip_pause_2:
+      jnz       .skip_yield_2
+;      ALIGN_STACK_AND_CALL r12, sched_yield, wrt, ..plt
+      pause
+.skip_yield_2:
 ;     --i;
       dec       rbx
       mov       QWORD [rbp - 24], rbx
@@ -1617,12 +1626,13 @@ b_merge:
       pop       rsi
       mov       rdx, QWORD [rbp - 40]
       call      memmove64 wrt ..plt
-;   if ((rbx and 7) == 0) pause();  [x/grok]
+;   if ((rbx and 7) == 0) sched_yield();  [x/grok]
       inc       rbx
       test      rbx, 7
-      jnz       .skip_pause_1
-      pause                  ; single-byte encoding: f3 90
-.skip_pause_1:
+      jnz       .skip_yield_1
+;      ALIGN_STACK_AND_CALL r12, sched_yield, wrt, ..plt
+      pause
+.skip_yield_1:
       jmp       .object_move_loop
 ; }
 ;
@@ -1646,12 +1656,13 @@ b_merge:
       add       rsi, QWORD [rbp - 48]
       call      b_child_at
       pop       QWORD [rax]
-;     if ((rbx and 7) == 0) pause();  [x/grok]
+;     if ((rbx and 7) == 0) sched_yield();  [x/grok]
       inc       rbx
       test      rbx, 7
-      jnz       .skip_pause_2
-      pause                  ; single-byte encoding: f3 90
-.skip_pause_2:
+      jnz       .skip_yield_2
+;      ALIGN_STACK_AND_CALL r12, sched_yield, wrt, ..plt
+      pause
+.skip_yield_2:
       jmp       .child_move_loop
 ;   }
 .child_move_break:
@@ -1675,12 +1686,13 @@ b_merge:
       pop       rsi
       mov       rdx, QWORD [rbp - 40]
       call      memmove64 wrt ..plt
-;   if ((rbx and 7) == 0) pause();  [x/grok]
-      inc       rbx
+;   if ((rbx and 7) == 0) sched_yield();  [x/grok]
       test      rbx, 7
-      jnz       .skip_pause_3
-      pause                  ; single-byte encoding: f3 90
-.skip_pause_3:
+      jnz       .skip_yield_3
+;      ALIGN_STACK_AND_CALL r12, sched_yield, wrt, ..plt
+      pause
+.skip_yield_3:
+      inc       rbx
       jmp       .object_move_loop_2
 .object_move_break_2:
 ; }
@@ -1700,12 +1712,13 @@ b_merge:
       dec       rsi
       call      b_child_at
       pop       QWORD [rax]
-;   if ((rbx and 7) == 0) pause();  [x/grok]
-      inc       rbx
+;   if ((rbx and 7) == 0) sched_yield();  [x/grok]
       test      rbx, 7
-      jnz       .skip_pause_4
-      pause                  ; single-byte encoding: f3 90
-.skip_pause_4:
+      jnz       .skip_yield_4
+;      ALIGN_STACK_AND_CALL r12, sched_yield, wrt, ..plt
+      pause
+.skip_yield_4:
+      inc       rbx
       jmp       .child_move_loop_2
 ; }
 .child_move_break_2:
@@ -2451,12 +2464,13 @@ b_split_child:
       pop       rsi
       mov       rdx, QWORD [rbp - 40]
       call      memmove64 wrt ..plt
-;   if ((rbx and 7) == 0) pause();  [x/grok]
+;   if ((rbx and 7) == 0) sched_yield();  [x/grok]
       inc       rbx
       test      rbx, 7
-      jnz       .skip_pause_1
-      pause                  ; single-byte encoding: f3 90
-.skip_pause_1:
+      jnz       .skip_yield_1
+;      ALIGN_STACK_AND_CALL r12, sched_yield, wrt, ..plt
+      pause
+.skip_yield_1:
       jmp       .object_move_loop
 ; }
 .object_move_break:
@@ -2481,12 +2495,13 @@ b_split_child:
       mov       rsi, rbx
       call      b_child_at
       pop       QWORD [rax]
-;     if ((rbx and 7) == 0) pause();  [x/grok]
+;     if ((rbx and 7) == 0) sched_yield();  [x/grok]
       inc       rbx
       test      rbx, 7
-      jnz       .skip_pause_2
-      pause                  ; single-byte encoding: f3 90
-.skip_pause_2:
+      jnz       .skip_yield_2
+;      ALIGN_STACK_AND_CALL r12, sched_yield, wrt, ..plt
+      pause
+.skip_yield_2:
       jmp       .child_move_loop
 ;   }
 .child_move_break:
@@ -2513,11 +2528,12 @@ b_split_child:
       inc       rsi
       call      b_child_at
       pop       QWORD [rax]
-;   if ((rbx and 7) == 0) pause();  [x/grok]
+;   if ((rbx and 7) == 0) sched_yield();  [x/grok]
       test      rbx, 7
-      jnz       .skip_pause_3
-      pause                  ; single-byte encoding: f3 90
-.skip_pause_3:
+      jnz       .skip_yield_3
+;      ALIGN_STACK_AND_CALL r12, sched_yield, wrt, ..plt
+      pause
+.skip_yield_3:
       dec       rbx
       mov       rdi, QWORD [rbp - 8]
       jmp       .child_move_loop_2
@@ -2547,11 +2563,12 @@ b_split_child:
       pop       rsi
       mov       rdx, QWORD [rbp - 40]
       call      memmove64 wrt ..plt
-;   if ((rbx and 7) == 0) pause();  [x/grok]
+;   if ((rbx and 7) == 0) sched_yield();  [x/grok]
       test      rbx, 7
-      jnz       .skip_pause_4
-      pause                  ; single-byte encoding: f3 90
-.skip_pause_4:
+      jnz       .skip_yield_4
+;      ALIGN_STACK_AND_CALL r12, sched_yield, wrt, ..plt
+      pause
+.skip_yield_4:
       dec       rbx
       mov       rdi, QWORD [rbp - 8]
       jmp       .object_move_loop_2
@@ -2636,17 +2653,19 @@ b_terminate:
       call      b_terminate
 .leaf_node:
 ;   o_del_cb(&node->object)[i])
+      mov       rdi, QWORD [rbp - 8]
       mov       rsi, rbx
       call      b_object_at
       mov       rdi, rax
       mov       rcx, QWORD [rbp - 16]
       ALIGN_STACK_AND_CALL r12, rcx
-;   if ((rbx and 7) == 0) pause();  [x/grok]
+;   if ((rbx and 7) == 0) sched_yield();  [x/grok]
       inc       rbx
       test      rbx, 7
-      jnz       .skip_pause
-      pause                  ; single-byte encoding: f3 90
-.skip_pause:
+      jnz       .skip_yield
+;      ALIGN_STACK_AND_CALL r12, sched_yield, wrt, ..plt
+      pause
+.skip_yield:
       mov       rdi, QWORD [rbp - 8]
       jmp       .loop
 ; }
@@ -2730,12 +2749,13 @@ b_traverse:
       mov       rdi, rax
       mov       rcx, QWORD [rbp - 16]
       ALIGN_STACK_AND_CALL r12, rcx
-;   if ((rbx and 7) == 0) pause();  [x/grok]
+;   if ((rbx and 7) == 0) sched_yield();  [x/grok]
       inc       rbx
       test      rbx, 7
-      jnz       .skip_pause
-      pause                  ; single-byte encoding: f3 90
-.skip_pause:
+      jnz       .skip_yield
+;      ALIGN_STACK_AND_CALL r12, sched_yield, wrt, ..plt
+      pause
+.skip_yield:
       mov       rdi, QWORD [rbp - 8]
       jmp       .loop
 ; }
