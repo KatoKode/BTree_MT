@@ -14,7 +14,6 @@ by Jerry McIntosh
 | Dell XPS 15 9510         | i7-11800H (8c/16t)      | 32 GB DDR4| 4,194,304 (ins+del) | 135.6 s     | **31,000 ops/sec**       |
 | (single-threaded test)   | Tiger Lake, 45 W TDP    |           |                     |             | **~1.95 M ops/sec/core** |
 
-> Outperforms Google Abseil btree_map, most Rust B+Tree crates, and comes within ~15–20 % of SQLite’s in-memory page index on the **same laptop**.  
 > Fully thread-safe (pthread_rwlock), generic object size, zero external dependencies.
 
 ---
