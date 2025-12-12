@@ -20,6 +20,7 @@
 %define BTREE_ASM  1
 ;
 %define BTREE_DEBUG 1
+%define BTREE_PAUSE 1
 ;
 extern calloc
 extern free
