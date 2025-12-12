@@ -19,6 +19,8 @@
 %ifndef BTREE_ASM
 %define BTREE_ASM  1
 ;
+%define BTREE_DEBUG 1
+;
 extern calloc
 extern free
 extern memset
@@ -60,6 +62,8 @@ ALIGN_MASK    EQU     ~(ALIGN_WITH)
 ;
 %include "btree.inc"
 ;
+%ifdef BTREE_DEBUG
+;
 section .data
       hdr01       db      "b_borrow_from_next",0
       hdr02       db      "b_borrow_from_prev",0
@@ -90,6 +94,8 @@ section .data
       hdr27       db      "b_walk",0
       fmt         db      "---| %s |---",10,0
 ;
+%endif
+;
 section .text
 ;
 ;-------------------------------------------------------------------------------
@@ -109,21 +115,25 @@ section .text
 ;   QWORD [rbp - 24]  = (b_node_t *child)
 ;   QWORD [rbp - 32]  = (b_node_t *sibling)
 ;   QWORD [rbp - 40]  = (size_t o_size)
+;   QWORD [rbp - 48]  = rbx (callee saved)
+;   QWORD [rbp - 56]  = r12 (callee saved)
 ;-------------------------------------------------------------------------------
 ;
       static b_borrow_from_next
 b_borrow_from_next:
-; prologue:
+; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 40
-      push      rbx
-      push      r12
+      sub       rsp, 56
 ; QWORD [rbp - 8] = rdi (node)
       mov       QWORD [rbp - 8], rdi
 ; QWORD [rbp - 16] = rsi (i)
       mov       QWORD [rbp - 16], rsi
-; BEGIN PRINTF
+; QWORD [rbp - 48] = rbx (callee saved)
+      mov       QWORD [rbp - 48], rbx
+; QWORD [rbp - 56] = r12 (callee saved)
+      mov       QWORD [rbp - 56], r12
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr01);
       xor       rax, rax
       mov       rdi, fmt
@@ -131,7 +141,7 @@ b_borrow_from_next:
       ALIGN_STACK_AND_CALL r12, printf, wrt, ..plt
       mov       rdi, QWORD [rbp - 8]
       mov       rsi, QWORD [rbp - 16]
-; END PRINTF
+%endif
 ; size_t o_size = node->tree->o_size;
       mov       rbx, QWORD [rdi + b_node.tree]
       mov       rax, QWORD [rbx + b_tree.o_size]
@@ -206,11 +216,13 @@ b_borrow_from_next:
       pop       rsi
       mov       rdx, QWORD [rbp - 40]
       call      memmove64 wrt ..plt
-;   if ((x and 7) == 0) pause;  [x/grok]
+%ifdef BTREE_PAUSE
+;   if ((x and 7) == 0) pause;
       test      rbx, 7
       jnz       .pause_1
       pause
 .pause_1:
+%endif
       inc       rbx
       jmp       .object_move_loop
 ; }
@@ -233,11 +245,13 @@ b_borrow_from_next:
       dec       rsi
       call      b_child_at
       pop       QWORD [rax]
+%ifdef BTREE_PAUSE
 ;     if ((x and 7) == 0) pause;  [x/grok]
       test      rbx, 7
       jnz       .pause_2
       pause
 .pause_2:
+%endif
       inc       rbx
       jmp       .child_move_loop
 ;   }
@@ -251,8 +265,10 @@ b_borrow_from_next:
       mov       rdi, QWORD [rbp - 32]
       dec       QWORD [rdi + b_node.nobj]
 ; epilogue
-      pop       r12
-      pop       rbx
+; r12 = QWORD [rbp - 56]
+      mov       r12, QWORD [rbp - 56]
+; rbx = QWORD [rbp - 48]
+      mov       rbx, QWORD [rbp - 48]
       mov       rsp, rbp
       pop       rbp
       ret
@@ -274,21 +290,25 @@ b_borrow_from_next:
 ;   QWORD [rbp - 24]  = (b_node_t *child)
 ;   QWORD [rbp - 32]  = (b_node_t *sibling)
 ;   QWORD [rbp - 40]  = (size_t o_size)
+;   QWORD [rbp - 48]  = rbx (callee saved)
+;   QWORD [rbp - 56]  = r12 (callee saved)
 ;-------------------------------------------------------------------------------
 ;
       static b_borrow_from_prev
 b_borrow_from_prev:
-; prologue:
+; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 40
-      push      rbx
-      push      r12
+      sub       rsp, 56
 ; QWORD [rbp - 8] = rdi (node)
       mov       QWORD [rbp - 8], rdi
 ; QWORD [rbp - 16] = rsi (i)
       mov       QWORD [rbp - 16], rsi
-; BEGIN PRINTF
+; QWORD [rbp - 48] = rbx (callee saved)
+      mov       QWORD [rbp - 48], rbx
+; QWORD [rbp - 56] = r12 (callee saved)
+      mov       QWORD [rbp - 56], r12
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr02);
       xor       rax, rax
       mov       rdi, fmt
@@ -296,7 +316,7 @@ b_borrow_from_prev:
       ALIGN_STACK_AND_CALL r12, printf, wrt, ..plt
       mov       rdi, QWORD [rbp - 8]
       mov       rsi, QWORD [rbp - 16]
-; END PRINTF
+%endif
 ; size_t o_size = node->tree->o_size;
       mov       rbx, QWORD [rdi + b_node.tree]
       mov       rax, QWORD [rbx + b_tree.o_size]
@@ -328,11 +348,13 @@ b_borrow_from_prev:
       pop       rsi
       mov       rdx, QWORD [rbp - 40]
       call      memmove64 wrt ..plt
+%ifdef BTREE_PAUSE
 ;   if ((x and 7) == 0) pause;  [x/grok]
       test      rbx, 7
       jnz       .pause_1
       pause
 .pause_1:
+%endif
       dec     rbx
       jmp       .object_move_loop
 ; }
@@ -355,11 +377,13 @@ b_borrow_from_prev:
       inc       rsi
       call      b_child_at
       pop       QWORD [rax]
+%ifdef BTREE_PAUSE
 ;     if ((x and 7) == 0) pause;  [x/grok]
       test      rbx, 7
       jnz       .pause_2
       pause
 .pause_2:
+%endif
       dec     rbx
       jmp       .child_move_loop
 ; }
@@ -418,8 +442,10 @@ b_borrow_from_prev:
       dec       rax
       mov       QWORD [rdi + b_node.nobj], rax
 ; epilogue
-      pop       r12
-      pop       rbx
+; r12 = QWORD [rbp - 56]
+      mov       r12, QWORD [rbp - 56]
+; rbx = QWORD [rbp - 48]
+      mov       rbx, QWORD [rbp - 48]
       mov       rsp, rbp
       pop       rbp
       ret
@@ -460,27 +486,30 @@ b_child_at:
 ;   QWORD [rbp - 20]  = (int cond)
 ;   QWORD [rbp - 24]  = (int flag)
 ;   QWORD [rbp - 32]  = (ssize_t const i)
+;   QWORD [rbp - 40]  = rbx (callee saved)
 ;-------------------------------------------------------------------------------
 ;
       static b_delete
 b_delete:
+; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 32
-      push      r12
+      sub       rsp, 40
 ; QWORD [rbp - 8] = rdi (node)
       mov       QWORD [rbp - 8], rdi
 ; QWORD [rbp - 16] = rsi (key)
       mov       QWORD [rbp - 16], rsi
-; BEGIN PRINTF
+; QWORD [rbp - 40] = rbx (key)
+      mov       QWORD [rbp - 40], rbx
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr03);
       xor       rax, rax
       mov       rdi, fmt
       mov       rsi, hdr03
-      ALIGN_STACK_AND_CALL r12, printf, wrt, ..plt
+      ALIGN_STACK_AND_CALL rbx, printf, wrt, ..plt
       mov       rdi, QWORD [rbp - 8]
       mov       rsi, QWORD [rbp - 16]
-; END PRINTF
+%endif
 ; int cond;
 ; ssize_t const i = b_find_key(node, key, &cond);
       lea       rdx, [rbp - 20]
@@ -572,7 +601,8 @@ b_delete:
       call      b_delete
 ; }
 .epilogue:
-      pop       r12
+; rbx = QWORD [rbp - 40]
+      mov       rbx, QWORD [rbp - 40]
       mov       rsp, rbp
       pop       rbp
       ret
@@ -592,23 +622,26 @@ b_delete:
 ;   QWORD [rbp - 8]   = rdi (node)
 ;   QWORD [rbp - 16]  = rsi (i)
 ;   QWORD [rbp - 24]  = (size_t o_size)
+;   QWORD [rbp - 32]  = rbx (callee saved)
 ;-------------------------------------------------------------------------------
 ;
       static b_delete_from_leaf
 b_delete_from_leaf:
+; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 24
-      push      rbx
+      sub       rsp, 40
 ; QWORD [rbp - 8] = rdi (node)
       mov       QWORD [rbp - 8], rdi
 ; QWORD [rbp - 16] = rsi (i)
       mov       QWORD [rbp - 16], rsi
-;   QWORD [rbp - 24]  = (size_t o_size)
-      mov       rbx, QWORD [rdi + b_node.tree]
-      mov       rax, QWORD [rbx + b_tree.o_size]
+; QWORD [rbp - 24] = (size_t o_size)
+      mov       rcx, QWORD [rdi + b_node.tree]
+      mov       rax, QWORD [rcx + b_tree.o_size]
       mov       QWORD [rbp - 24], rax
-; BEGIN PRINTF
+; QWORD [rbp - 32] = rbx (callee saved)
+      mov       QWORD [rbp - 32], rbx
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr04);
       xor       rax, rax
       mov       rdi, fmt
@@ -616,7 +649,7 @@ b_delete_from_leaf:
       ALIGN_STACK_AND_CALL rbx, printf, wrt, ..plt
       mov       rdi, QWORD [rbp - 8]
       mov       rsi, QWORD [rbp - 16]
-; END PRINTF
+%endif
 ; node->tree->o_del_cb(&node->object[i]);
       call      b_object_at
       push      rax
@@ -641,11 +674,13 @@ b_delete_from_leaf:
       pop       rsi
       mov       rdx, QWORD [rbp - 24]
       call      memmove64 wrt ..plt
+%ifdef BTREE_PAUSE
 ;   if ((x and 7) == 0) pause;  [x/grok]
       test      rbx, 7
       jnz       .pause
       pause
 .pause:
+%endif
       inc       rbx
       jmp       .shift_object_loop
 ; }
@@ -654,7 +689,8 @@ b_delete_from_leaf:
       mov       rdi, QWORD [rbp - 8]
       dec       QWORD [rdi + b_node.nobj]
 ; epilogue
-      pop       rbx
+; rbx = QWORD [rbp - 32]
+      mov       rbx, QWORD [rbp - 32]
       mov       rsp, rbp
       pop       rbp
       ret
@@ -678,7 +714,10 @@ b_delete_from_leaf:
 ;   QWORD [rbp - 40]  = (size_t o_size)
 ;   QWORD [rbp - 48]  = (size_t mindeg)
 ;   QWORD [rbp - 56]  = (object_t *prev, *next)
-;   QWORD [rbp - (56 + o_size)] = (object_t object)
+;   QWORD [rbp - 64]  = rbx (callee saved)
+;   QWORD [rbp - 72]  = r12 (callee saved)
+;   QWORD [rbp - 80]  = (&object)
+;   QWORD [rbp - (96 + o_size)] = (object_t object)
 ;-------------------------------------------------------------------------------
 ;
       static b_delete_from_non_leaf
@@ -686,19 +725,25 @@ b_delete_from_non_leaf:
 ; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 56
-; adjusting stack to make room for an object of size o_size.  basically this in
-; a C function: object_t object;
+      sub       rsp, 88
+; adjusting stack to make room for an object of size o_size. a local variable in
+; C function;
       mov       rcx, QWORD [rdi + b_node.tree]
       mov       rax, QWORD [rcx + b_tree.o_size]
+      add       rax, ALIGN_WITH   ; push o_size over next 16-byte boundary
+      and       rax, ALIGN_MASK   ; zero out lower four bits
       sub       rsp, rax
-      push      rbx
-      push      r12
+; QWORD [rbp - 80] = &object
+      mov       QWORD [rbp - 80], rsp
 ; QWORD [rbp - 8] = rdi (node)
       mov       QWORD [rbp - 8], rdi
 ; QWORD [rbp - 16] = rsi (i)
       mov       QWORD [rbp - 16], rsi
-; BEGIN PRINTF
+; QWORD [rbp - 64] = rbx (callee saved)
+      mov       QWORD [rbp - 64], rbx
+; QWORD [rbp - 72] = r12 (callee saved)
+      mov       QWORD [rbp - 72], r12
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr05);
       xor       rax, rax
       mov       rdi, fmt
@@ -706,7 +751,7 @@ b_delete_from_non_leaf:
       ALIGN_STACK_AND_CALL r12, printf, wrt, ..plt
       mov       rdi, QWORD [rbp - 8]
       mov       rsi, QWORD [rbp - 16]
-; END PRINTF
+%endif
 ; b_node_t *child = node->child[i];
       call      b_child_at
       mov       rbx, QWORD [rax]
@@ -729,7 +774,7 @@ b_delete_from_non_leaf:
       mov       rsi, QWORD [rbp - 16]
       call      b_object_at
       mov       rsi, rax
-      lea       rdi, [rsp + 8]
+      mov       rdi, [rbp - 80]
       mov       rdx, QWORD [rbp - 40]
       call      memmove64 wrt ..plt
 ; if (node->child[i]->nobj >= node->tree->mindeg) {
@@ -746,7 +791,7 @@ b_delete_from_non_leaf:
       mov       rdi, QWORD [rbp - 8]
       mov       rax, QWORD [rdi + b_node.tree]
       mov       rcx, QWORD [rax + b_tree.o_del_cb]
-      lea       rdi, [rsp + 8]
+      mov       rdi, [rbp - 80]
       ALIGN_STACK_AND_CALL r12, rcx
 ;   (void)memmove64(&((object_t *)node->object)[i], prev, node->tree->o_size);;
       mov       rdi, QWORD [rbp - 8]
@@ -781,7 +826,8 @@ b_delete_from_non_leaf:
       mov       rdi, QWORD [rbp - 8]
       mov       rax, QWORD [rdi + b_node.tree]
       mov       rcx, QWORD [rax + b_tree.o_del_cb]
-      lea       rdi, [rsp + 8]
+;     lea       rdi, [rsp + 8]
+      mov       rdi, QWORD [rbp - 80]
       ALIGN_STACK_AND_CALL r12, rcx
 ;   (void)memmove64(&node->object[i], next, node->tree->o_size);
       mov       rdi, QWORD [rbp - 8]
@@ -812,15 +858,18 @@ b_delete_from_non_leaf:
       mov       rdi, QWORD [rbp - 8]
       mov       rax, QWORD [rdi + b_node.tree]
       mov       rcx, QWORD [rax + b_tree.k_get_cb]
-      lea       rdi, [rsp + 8]
+;     lea       rdi, [rsp + 8]
+      mov       rdi, QWORD [rbp - 80]
       ALIGN_STACK_AND_CALL r12, rcx
       mov       rsi, rax
       mov       rdi, QWORD [rbp - 24]
       call      b_delete
 ; }
 .epilogue:
-      pop       r12
-      pop       rbx
+; r12 = QWORD [rbp - 72]
+      mov       r12, QWORD [rbp - 72]
+; rbx = QWORD [rbp - 64]
+      mov       rbx, QWORD [rbp - 64]
       mov       rsp, rbp
       pop       rbp
       ret
@@ -840,6 +889,7 @@ b_delete_from_non_leaf:
 ;   QWORD [rbp - 8]   = rdi (node)
 ;   QWORD [rbp - 16]  = rsi (i)
 ;   QWORD [rbp - 24]  = (size_t mindeg)
+;   QWORD [rbp - 32]  = rbx (callee saved)
 ;-------------------------------------------------------------------------------
 ;
       static b_fill
@@ -847,13 +897,14 @@ b_fill:
 ; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 24
-      push      rbx
+      sub       rsp, 40
 ; QWORD [rbp - 8] = rdi (node)
       mov       QWORD [rbp - 8], rdi
 ; QWORD [rbp - 16] = rsi (i)
       mov       QWORD [rbp - 16], rsi
-; BEGIN PRINTF
+; QWORD [rbp - 32] = rbx (callee saved)
+      mov       QWORD [rbp - 32], rbx
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr06);
       xor       rax, rax
       mov       rdi, fmt
@@ -861,7 +912,7 @@ b_fill:
       ALIGN_STACK_AND_CALL rbx, printf, wrt, ..plt
       mov       rdi, QWORD [rbp - 8]
       mov       rsi, QWORD [rbp - 16]
-; END PRINTF
+%endif
 ; size_t mindeg = node->tree->mindeg;
       mov       rbx, QWORD [rdi + b_node.tree]
       mov       rax, QWORD [rbx + b_tree.mindeg]
@@ -918,7 +969,8 @@ b_fill:
       call      b_merge
 ; }
 .epilogue:
-      pop       rbx
+; rbx = QWORD [rbp - 32]
+      mov       rbx, QWORD [rbp - 32]
       mov       rsp, rbp
       pop       rbp
       ret
@@ -947,6 +999,8 @@ b_fill:
 ;   QWORD [rbp - 48]  = (ssize_t hi)
 ;   QWORD [rbp - 56]  = (size_t mid)
 ;   QWORD [rbp - 64]  = (size_t alt_mid)
+;   QWORD [rbp - 72]  = rbx (callee saved)
+;   QWORD [rbp - 80]  = r12 (callee saved)
 ;-------------------------------------------------------------------------------
 ;
       static b_find_key
@@ -954,22 +1008,24 @@ b_find_key:
 ; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 64
-      push      rbx
-      push      r12
+      sub       rsp, 88
 ; QWORD [rbp - 8] = rdi (node)
       mov       QWORD [rbp - 8], rdi
 ; QWORD [rbp - 16] = rsi (key)
       mov       QWORD [rbp - 16], rsi
 ; QWORD [rbp - 24] = rdx (cond)
       mov       QWORD [rbp - 24], rdx
+; QWORD [rbp - 72] = rbx (callee saved)
+      mov       QWORD [rbp - 72], rbx
+; QWORD [rbp - 80] = r12 (callee saved)
+      mov       QWORD [rbp - 80], r12
 ; if (node->nobj <= 9) return b_hunt_key(node, key, cond);
       cmp       QWORD [rdi + b_node.nobj], HUNT_MAX
       ja        .no_hunting
       call      b_hunt_key
       jmp       .epilogue
 .no_hunting:
-; BEGIN PRINTF
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr07);
       xor       rax, rax
       mov       rdi, fmt
@@ -978,7 +1034,7 @@ b_find_key:
       mov       rdi, QWORD [rbp - 8]
       mov       rsi, QWORD [rbp - 16]
       mov       rdx, QWORD [rbp - 24]
-; END PRINTF
+%endif
 ; b_compare_cb k_cmp_cb = node->tree->k_cmp_cb;
       mov       rbx, QWORD [rdi + b_node.tree]
       mov       rax, QWORD [rbx + b_tree.k_cmp_cb]
@@ -1034,12 +1090,14 @@ b_find_key:
       inc       rax
       mov       QWORD [rbp - 40], rax
 .end_if_else:
-;   if ((x and 7) == 0) pause;  [x/grok]
       inc       rbx
+%ifdef BTREE_PAUSE
+;   if ((x and 7) == 0) pause;  [x/grok]
       test      rbx, 7
       jnz       .pause
       pause
 .pause:
+%endif
       mov       rdi, QWORD [rbp - 8]
       mov       rax, QWORD [rbp - 48]
       jmp       .loop
@@ -1048,8 +1106,10 @@ b_find_key:
 ; return alt_mid;
       mov       rax, QWORD [rbp - 64]
 .epilogue:
-      pop       r12
-      pop       rbx
+; r12 = QWORD [rbp - 80]
+      mov       r12, QWORD [rbp - 80]
+; rbx = QWORD [rbp - 72]
+      mov       rbx, QWORD [rbp - 72]
       mov       rsp, rbp
       pop       rbp
       ret
@@ -1075,6 +1135,7 @@ b_find_key:
 ;   QWORD [rbp - 24]  = rdx (cond)
 ;   QWORD [rbp - 32]  = (b_compare_cb k_cmp_cb)
 ;   QWORD [rbp - 40]  = (size_t i)
+;   QWORD [rbp - 48]  = rbx (callee saved)
 ;-------------------------------------------------------------------------------
 ;
       static b_hunt_key
@@ -1082,22 +1143,24 @@ b_hunt_key:
 ; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 40
-      push      r12
+      sub       rsp, 56
+      push      rbx
 ; QWORD [rbp - 8] = rdi (node)
       mov       QWORD [rbp - 8], rdi
 ; QWORD [rbp - 16] = rsi (key)
       mov       QWORD [rbp - 16], rsi
 ; QWORD [rbp - 24] = rdx (cond)
       mov       QWORD [rbp - 24], rdx
-; BEGIN PRINTF
+; QWORD [rbp - 48] = rbx (callee saved)
+      mov       QWORD [rbp - 48], rbx
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr08);
       xor       rax, rax
       mov       rdi, fmt
       mov       rsi, hdr08
-      ALIGN_STACK_AND_CALL r12, printf, wrt, ..plt
+      ALIGN_STACK_AND_CALL rbx, printf, wrt, ..plt
       mov       rdi, QWORD [rbp - 8]
-; END PRINTF
+%endif
 ; b_compare_cb k_cmp_cb = node->tree->k_cmp_cb;
       mov       rsi, QWORD [rdi + b_node.tree]
       mov       rax, QWORD [rsi + b_tree.k_cmp_cb]
@@ -1115,7 +1178,7 @@ b_hunt_key:
       mov       rsi, rax
       mov       rdi, QWORD [rbp - 16]
       mov       rcx, QWORD [rbp - 32]
-      ALIGN_STACK_AND_CALL r12, rcx
+      ALIGN_STACK_AND_CALL rbx, rcx
       mov       rcx, QWORD [rbp - 24]
       mov       DWORD [rcx], eax
       cmp       eax, 0
@@ -1129,7 +1192,8 @@ b_hunt_key:
 ; return i;
       mov       rax, QWORD [rbp - 40]
 .epilogue:
-      pop       r12
+; rbx = QWORD [rbp - 48]
+      mov       rbx, QWORD [rbp - 48]
       mov       rsp, rbp
       pop       rbp
       ret
@@ -1148,6 +1212,7 @@ b_hunt_key:
 ;   QWORD [rbp - 8]   = rdi (tree)
 ;   QWORD [rbp - 16]  = rsi (object)
 ;   DWORD [rbp - 24]  = (retval)
+;   QWORD [rbp - 32]  = rbx (callee saved)
 ;
 ; return:
 ;
@@ -1159,19 +1224,20 @@ b_insert:
 ; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 24
-      push      rbx
+      sub       rsp, 40
 ; QWORD [rbp - 8] = rdi (tree)
       mov       QWORD [rbp - 8], rdi
 ; QWORD [rbp - 16] = rsi (object)
       mov       QWORD [rbp - 16], rsi
-; BEGIN PRINTF
+; QWORD [rbp - 32] = rbx (callee saved)
+      mov       QWORD [rbp - 32], rbx
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr09);
       xor       rax, rax
       mov       rdi, fmt
       mov       rsi, hdr09
       ALIGN_STACK_AND_CALL rbx, printf, wrt, ..plt
-; END PRINTF
+%endif
 ; pthread_rwlock_wrlock(tree->rwlock);
       mov       rdi, QWORD [rbp - 8]
       mov       rax, QWORD [rdi + b_tree.rwlock]
@@ -1206,7 +1272,8 @@ b_insert:
       ALIGN_STACK_AND_CALL rbx, pthread_rwlock_unlock, wrt, ..plt
 .epilogue:
       mov       eax, DWORD [rbp - 24]
-      pop       rbx
+; rbx = QWORD [rbp - 32]
+      mov       rbx, QWORD [rbp - 32]
       mov       rsp, rbp
       pop       rbp
       ret
@@ -1226,6 +1293,7 @@ b_insert:
 ;   QWORD [rbp - 16]  = rsi (object)
 ;   QWORD [rbp - 24]  = (b_node_t *root)
 ;   QWORD [rbp - 32]  = (size_t i)
+;   QWORD [rbp - 48]  = rbx (callee saved)
 ;-------------------------------------------------------------------------------
 ;
       static b_insert_object
@@ -1233,19 +1301,20 @@ b_insert_object:
 ; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 32
-      push      rbx
+      sub       rsp, 56
 ; QWORD [rbp - 8] = rdi (tree)
       mov       QWORD [rbp - 8], rdi
 ; QWORD [rbp - 16] = rsi (object)
       mov       QWORD [rbp - 16], rsi
-; BEGIN PRINTF
+; QWORD [rbp - 48] = rbx (callee saved)
+      mov       QWORD [rbp - 48], rbx
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr10);
       xor       rax, rax
       mov       rdi, fmt
       mov       rsi, hdr10
       ALIGN_STACK_AND_CALL rbx, printf, wrt, ..plt
-; END PRINTF
+%endif
 ; if (tree->root == NULL) {
       mov       rdi, QWORD [rbp - 8]
       xor       rax, rax
@@ -1344,7 +1413,8 @@ b_insert_object:
       call      b_insert_non_full
 ; }
 .epilogue:
-      pop       rbx
+; rbx = QWORD [rbp - 48]
+      mov       rbx, QWORD [rbp - 48]
       mov       rsp, rbp
       pop       rbp
       ret
@@ -1365,6 +1435,8 @@ b_insert_object:
 ;   QWORD [rbp - 24]  = (ssize_t i)
 ;   QWORD [rbp - 32]  = (b_compare_cb o_cmp_cb)
 ;   QWORD [rbp - 40]  = (size_t o_size)
+;   QWORD [rbp - 48]  = rbx (callee saved)
+;   QWORD [rbp - 56]  = r12 (callee saved)
 ;-------------------------------------------------------------------------------
 ;
       static b_insert_non_full
@@ -1372,14 +1444,16 @@ b_insert_non_full:
 ; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 40
-      push      rbx
-      push      r12
+      sub       rsp, 72
 ; QWORD [rbp - 8] = rdi (node)
       mov       QWORD [rbp - 8], rdi
 ; QWORD [rbp - 16] = rsi (object)
       mov       QWORD [rbp - 16], rsi
-; BEGIN PRINTF
+; QWORD [rbp - 48] = rbx (callee saved)
+      mov       QWORD [rbp - 48], rbx
+; QWORD [rbp - 56] = r12 (callee saved)
+      mov       QWORD [rbp - 56], r12
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr11);
       xor       rax, rax
       mov       rdi, fmt
@@ -1387,7 +1461,7 @@ b_insert_non_full:
       ALIGN_STACK_AND_CALL r12, printf, wrt, ..plt
       mov       rdi, QWORD [rbp - 8]
       mov       rsi, QWORD [rbp - 16]
-; END PRINTF
+%endif
 ; b_compare_cb o_cmp_cb = node->tree->o_cmp_cb
       mov       rbx, QWORD [rdi + b_node.tree]
       mov       rax, QWORD [rbx + b_tree.o_cmp_cb]
@@ -1428,11 +1502,13 @@ b_insert_non_full:
       pop       rsi
       mov       rdx, QWORD [rbp - 40]
       call      memmove64 wrt ..plt
+%ifdef BTREE_PAUSE
 ;     if ((x and 7) == 0) pause;  [x/grok]
       test      rbx, 7
       jnz       .pause_1
       pause
 .pause_1:
+%endif
       dec       rbx
       mov       QWORD [rbp - 24], rbx
       jmp       .object_move_loop
@@ -1469,11 +1545,13 @@ b_insert_non_full:
       ALIGN_STACK_AND_CALL r12, rcx
       cmp       eax, 0
       jle       .child_find_break
+%ifdef BTREE_PAUSE
 ;     if ((x and 7) == 0) pause;  [x/grok]
       test      rbx, 7
       jnz       .pause_2
       pause
 .pause_2:
+%endif
 ;     --i;
       dec       rbx
       mov       QWORD [rbp - 24], rbx
@@ -1528,8 +1606,10 @@ b_insert_non_full:
       call      b_insert_non_full
 ; }
 .epilogue:
-      pop       r12
-      pop       rbx
+; r12 = QWORD [rbp - 56]
+      mov       r12, QWORD [rbp - 56]
+; rbx = QWORD [rbp - 48]
+      mov       rbx, QWORD [rbp - 48]
       mov       rsp, rbp
       pop       rbp
       ret
@@ -1552,20 +1632,24 @@ b_insert_non_full:
 ;   QWORD [rbp - 32]  = (sibling)
 ;   QWORD [rbp - 40]  = (size_t o_size)
 ;   QWORD [rbp - 48]  = (size_t mindeg)
+;   QWORD [rbp - 56]  = rbx (callee saved)
+;   QWORD [rbp - 64]  = r12 (callee saved)
 ;-------------------------------------------------------------------------------
 ;
       static b_merge
 b_merge:
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 48
-      push      rbx
-      push      r12
+      sub       rsp, 72
 ; QWORD [rbp - 8] = rdi (node)
       mov       QWORD [rbp - 8], rdi
 ; QWORD [rbp - 16] = rsi (i)
       mov       QWORD [rbp - 16], rsi
-; BEGIN PRINTF
+; QWORD [rbp - 56] = rbx (callee saved)
+      mov       QWORD [rbp - 56], rbx
+; QWORD [rbp - 64] = r12 (callee saved)
+      mov       QWORD [rbp - 64], r12
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr12);
       xor       rax, rax
       mov       rdi, fmt
@@ -1573,7 +1657,7 @@ b_merge:
       ALIGN_STACK_AND_CALL r12, printf, wrt, ..plt
       mov       rdi, QWORD [rbp - 8]
       mov       rsi, QWORD [rbp - 16]
-; END PRINTF
+%endif
 ; b_node_t *child = node->child[i];
       call      b_child_at
       mov       rbx, QWORD [rax]
@@ -1624,12 +1708,14 @@ b_merge:
       pop       rsi
       mov       rdx, QWORD [rbp - 40]
       call      memmove64 wrt ..plt
-;   if ((x and 7) == 0) pause;  [x/grok]
       inc       rbx
+%ifdef BTREE_PAUSE
+;   if ((x and 7) == 0) pause;  [x/grok]
       test      rbx, 7
       jnz       .pause_1
       pause
 .pause_1:
+%endif
       jmp       .object_move_loop
 ; }
 ;
@@ -1653,12 +1739,14 @@ b_merge:
       add       rsi, QWORD [rbp - 48]
       call      b_child_at
       pop       QWORD [rax]
-;     if ((x and 7) == 0) pause;  [x/grok]
       inc       rbx
+%ifdef BTREE_PAUSE
+;     if ((x and 7) == 0) pause;  [x/grok]
       test      rbx, 7
       jnz       .pause_2
       pause
 .pause_2:
+%endif
       jmp       .child_move_loop
 ;   }
 .child_move_break:
@@ -1682,11 +1770,13 @@ b_merge:
       pop       rsi
       mov       rdx, QWORD [rbp - 40]
       call      memmove64 wrt ..plt
+%ifdef BTREE_PAUSE
 ;   if ((x and 7) == 0) pause;  [x/grok]
       test      rbx, 7
       jnz       .pause_3
       pause
 .pause_3:
+%endif
       inc       rbx
       jmp       .object_move_loop_2
 .object_move_break_2:
@@ -1707,11 +1797,13 @@ b_merge:
       dec       rsi
       call      b_child_at
       pop       QWORD [rax]
+%ifdef BTREE_PAUSE
 ;   if ((x and 7) == 0) pause;  [x/grok]
       test      rbx, 7
       jnz       .pause_4
       pause
 .pause_4:
+%endif
       inc       rbx
       jmp       .child_move_loop_2
 ; }
@@ -1734,8 +1826,10 @@ b_merge:
       mov       rdi, QWORD [rbp - 32]
       ALIGN_STACK_AND_CALL r12, free, wrt, ..plt
 ; epilogue
-      pop       r12
-      pop       rbx
+; r12 = QWORD [rbp - 64]
+      mov       r12, QWORD [rbp - 64]
+; rbx = QWORD [rbp - 56]
+      mov       rbx, QWORD [rbp - 56]
       mov       rsp, rbp
       pop       rbp
       ret
@@ -1790,6 +1884,7 @@ b_next_object:
 ;   QWORD [rbp - 16]  = (size_t max_child)
 ;   QWORD [rbp - 24]  = (size_t max_object)
 ;   QWORD [rbp - 32]  = (size_t buf_size)
+;   QWORD [rbp - 40]  = rbx (callee saved)
 ;-------------------------------------------------------------------------------
 ;
       static b_node_init
@@ -1797,22 +1892,23 @@ b_node_init:
 ; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 32
-      push      r12
+      sub       rsp, 40
 ; QWORD [rbp - 8] = rdi (node)
       mov       QWORD [rbp - 8], rdi
-; BEGIN PRINTF
+; QWORD [rbp - 40] = rbx (node)
+      mov       QWORD [rbp - 40], rbx
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr14);
       push      rsi
       push      rdx
       xor       rax, rax
       mov       rdi, fmt
       mov       rsi, hdr14
-      ALIGN_STACK_AND_CALL r12, printf, wrt, ..plt
+      ALIGN_STACK_AND_CALL rbx, printf, wrt, ..plt
       mov       rdi, QWORD [rbp - 8]
       pop       rdx
       pop       rsi
-; END PRINTF
+%endif
 ; node->leaf = leaf
       mov       BYTE [rdi + b_node.leaf], dl
 ; node->nobj = 0
@@ -1852,7 +1948,7 @@ b_node_init:
 ; node->object = calloc(1, bufsize)
       mov       rsi, QWORD [rbp - 32]
       mov       rdi, 1
-      ALIGN_STACK_AND_CALL r12, calloc, wrt, ..plt
+      ALIGN_STACK_AND_CALL rbx, calloc, wrt, ..plt
 ;      call    calloc wrt ..plt
       mov       rdi, QWORD [rbp - 8]
       mov       QWORD [rdi + b_node.object], rax
@@ -1875,7 +1971,8 @@ b_node_init:
       mov       QWORD [rdi + b_node.object], rax
 ; }
 .epilogue:
-      pop       r12
+; rbx = QWORD [rbp - 40]
+      mov       rbx, QWORD [rbp - 40]
       mov       rsp, rbp
       pop       rbp
       ret
@@ -1891,7 +1988,8 @@ b_node_init:
 ;
 ; stack:
 ;
-;   QWORD [rbp - 8] = rdi (node)
+;   QWORD [rbp - 8]   = rdi (node)
+;   QWORD [rbp - 16]  = rbx (callee saved)
 ;
 ;-------------------------------------------------------------------------------
 ;
@@ -1900,18 +1998,19 @@ b_node_term:
 ; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 8
-      push      r12
+      sub       rsp, 24
 ; QWORD [rbp - 8] = rdi (node)
       mov       QWORD [rbp - 8], rdi
-; BEGIN PRINTF
+; QWORD [rbp - 16] = rbx (callee saved)
+      mov       QWORD [rbp - 16], rbx
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr15);
       xor       rax, rax
       mov       rdi, fmt
       mov       rsi, hdr15
-      ALIGN_STACK_AND_CALL r12, printf, wrt, ..plt
+      ALIGN_STACK_AND_CALL rbx, printf, wrt, ..plt
       mov       rdi, QWORD [rbp - 8]
-; END PRINTF
+%endif
 ; if (node->leaf == true) free(n->object)
 ; else free(n->child)
       mov       rcx, QWORD [rdi + b_node.child]
@@ -1921,14 +2020,15 @@ b_node_term:
       mov       rcx, QWORD [rdi + b_node.object]
 .non_leaf:
       mov       rdi, rcx
-      ALIGN_STACK_AND_CALL r12, free, wrt, ..plt
+      ALIGN_STACK_AND_CALL rbx, free, wrt, ..plt
 ; (void) memset(n, 0, sizeof(b_node_t))
       mov       rdi, QWORD [rbp - 8]
       xor       rsi, rsi
       mov       rdx, b_node_size
-      ALIGN_STACK_AND_CALL r12, memset, wrt, ..plt
+      ALIGN_STACK_AND_CALL rbx, memset, wrt, ..plt
 ; epilogue
-      pop       r12
+; rbx = QWORD [rbp - 16]
+      mov       rbx, QWORD [rbp - 16]
       mov       rsp, rbp
       pop       rbp
       ret
@@ -2013,6 +2113,7 @@ b_prev_object:
 ;   QWORD [rbp - 16]  = rsi (key)
 ;   QWORD [rbp - 24]  = (size_t i)
 ;   DWORD [rbp - 32]  = (int cond)
+;   QWORD [rbp - 40]  = rbx (callee saved)
 ;-------------------------------------------------------------------------------
 ;
       static b_probe
@@ -2020,19 +2121,20 @@ b_probe:
 ; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 32
-      push      r12
+      sub       rsp, 40
 ; QWORD [rbp - 8] = rdi (node)
       mov       QWORD [rbp - 8], rdi
 ; QWORD [rbp - 16] = rsi (key)
       mov       QWORD [rbp - 16], rsi
-; BEGIN PRINTF
+; QWORD [rbp - 40] = rbx (callee saved)
+      mov       QWORD [rbp - 40], rbx
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr17);
       xor       rax, rax
       mov       rdi, fmt
       mov       rsi, hdr17
-      ALIGN_STACK_AND_CALL r12, printf, wrt, ..plt
-; END PRINTF
+      ALIGN_STACK_AND_CALL rbx, printf, wrt, ..plt
+%endif
 ; if (node == NULL) return -1;
       mov       eax, -1
       mov       rcx, QWORD [rbp - 8]
@@ -2070,7 +2172,8 @@ b_probe:
       mov       rsi, QWORD [rbp - 16]
       call      b_probe
 .epilogue:
-      pop       r12
+; rbx = QWORD [rbp - 40]
+      mov       rbx, QWORD [rbp - 40]
       mov       rsp, rbp
       pop       rbp
       ret
@@ -2089,6 +2192,7 @@ b_probe:
 ;
 ;   QWORD [rbp - 8]   = rdi (tree)
 ;   QWORD [rbp - 16]  = rsi (key)
+;   QWORD [rbp - 24]  = rbx (callee saved)
 ;-------------------------------------------------------------------------------
 ;
       global b_remove:function
@@ -2096,24 +2200,25 @@ b_remove:
 ; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 16
-      push      r12
+      sub       rsp, 24
 ; QWORD [rbp - 8] = rdi (tree)
       mov       QWORD [rbp - 8], rdi
 ; QWORD [rbp - 16] = rsi (key)
       mov       QWORD [rbp - 16], rsi
-; BEGIN PRINTF
+; QWORD [rbp - 24] = rbx (callee saved)
+      mov       QWORD [rbp - 24], rbx
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr18);
       xor       rax, rax
       mov       rdi, fmt
       mov       rsi, hdr18
-      ALIGN_STACK_AND_CALL r12, printf, wrt, ..plt
-; END PRINTF
+      ALIGN_STACK_AND_CALL rbx, printf, wrt, ..plt
+%endif
 ; pthread_rwlock_wrlock(tree->rwlock);
       mov       rdi, QWORD [rbp - 8]
       mov       rax, QWORD [rdi + b_tree.rwlock]
       mov       rdi, rax
-      ALIGN_STACK_AND_CALL r12, pthread_rwlock_wrlock, wrt, ..plt
+      ALIGN_STACK_AND_CALL rbx, pthread_rwlock_wrlock, wrt, ..plt
 ; b_remove_object(tree, key);
       mov       rdi, QWORD [rbp - 8]
       mov       rsi, QWORD [rbp - 16]
@@ -2122,9 +2227,10 @@ b_remove:
       mov       rdi, QWORD [rbp - 8]
       mov       rax, QWORD [rdi + b_tree.rwlock]
       mov       rdi, rax
-      ALIGN_STACK_AND_CALL r12, pthread_rwlock_unlock, wrt, ..plt
+      ALIGN_STACK_AND_CALL rbx, pthread_rwlock_unlock, wrt, ..plt
 .epilogue:
-      pop     r12
+; rbx = QWORD [rbp - 24]
+      mov     rbx, QWORD [rbp - 24]
       mov     rsp, rbp
       pop     rbp
       ret
@@ -2144,6 +2250,7 @@ b_remove:
 ;   QWORD [rbp - 8]   = rdi (tree)
 ;   QWORD [rbp - 16]  = rsi (key)
 ;   QWORD [rbp - 24]  = (old_root)
+;   QWORD [rbp - 32]  = rbx (callee saved)
 ;-------------------------------------------------------------------------------
 ;
       static b_remove_object
@@ -2151,13 +2258,14 @@ b_remove_object:
 ; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 24
-      push      rbx
+      sub       rsp, 40
 ; QWORD [rbp - 8] = rdi (tree)
       mov       QWORD [rbp - 8], rdi
 ; QWORD [rbp - 16] = rsi (key)
       mov       QWORD [rbp - 16], rsi
-; BEGIN PRINTF
+; QWORD [rbp - 32] = rbx (callee saved)
+      mov       QWORD [rbp - 32], rbx
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr19);
       xor       rax, rax
       mov       rdi, fmt
@@ -2165,7 +2273,7 @@ b_remove_object:
       ALIGN_STACK_AND_CALL rbx, printf, wrt, ..plt
       mov       rdi, QWORD [rbp - 8]
       mov       rsi, QWORD [rbp - 16]
-; END PRINTF
+%endif
 ; if (tree->root == NULL) return;
       xor       rax, rax
       mov       rdi, QWORD [rbp - 8]
@@ -2206,7 +2314,8 @@ b_remove_object:
       ALIGN_STACK_AND_CALL rbx, free, wrt, ..plt
 ; }
 .epilogue:
-      pop     rbx
+; rbx = QWORD [rbp - 32]
+      mov     rbx, QWORD [rbp - 32]
       mov     rsp, rbp
       pop     rbp
       ret
@@ -2232,6 +2341,7 @@ b_remove_object:
 ;   QWORD [rbp - 16]  = rsi (key)
 ;   QWORD [rbp - 24]  = rdx (buffer)
 ;   QWORD [rbp - 32]  = (retval)
+;   QWORD [rbp - 40]  = rbx (callee saved)
 ;-------------------------------------------------------------------------------
 ;
       global b_search:function
@@ -2239,21 +2349,22 @@ b_search:
 ; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 32
-      push      rbx
+      sub       rsp, 40
 ; QWORD [rbp - 8] = rdi (node)
       mov       QWORD [rbp - 8], rdi
 ; QWORD [rbp - 16] = rsi (key)
       mov       QWORD [rbp - 16], rsi
 ; QWORD [rbp - 24] = rdx (buffer)
       mov       QWORD [rbp - 24], rdx
-; BEGIN PRINTF
+; QWORD [rbp - 40] = rbx (callee saved)
+      mov       QWORD [rbp - 40], rbx
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr20);
       xor       rax, rax
       mov       rdi, fmt
       mov       rsi, hdr20
       ALIGN_STACK_AND_CALL rbx, printf, wrt, ..plt
-; END PRINTF
+%endif
 ; pthread_rwlock_rdlock(tree->rwlock);
       mov       rax, QWORD [rdi + b_node.tree]
       mov       rdi, QWORD [rax + b_tree.rwlock]
@@ -2271,7 +2382,8 @@ b_search:
       ALIGN_STACK_AND_CALL rbx, pthread_rwlock_unlock, wrt, ..plt
 .epilogue:
       mov       rax, QWORD [rbp - 32]
-      pop       rbx
+; rbx = QWORD [rbp - 40]
+      mov       rbx, QWORD [rbp - 40]
       mov       rsp, rbp
       pop       rbp
       ret
@@ -2298,6 +2410,7 @@ b_search:
 ;   QWORD [rbp - 24]  = rdx (buffer)
 ;   QWORD [rbp - 32]  = (size_t i)
 ;   DWORD [rbp - 40]  = (int cond)
+;   DWORD [rbp - 48]  = rbx (callee saved)
 ;-------------------------------------------------------------------------------
 ;
       static b_search_tree
@@ -2305,21 +2418,22 @@ b_search_tree:
 ; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 40
-      push      rbx
+      sub       rsp, 56
 ; QWORD [rbp - 8] = rdi (node)
       mov       QWORD [rbp - 8], rdi
 ; QWORD [rbp - 16] = rsi (key)
       mov       QWORD [rbp - 16], rsi
 ; QWORD [rbp - 24] = rdx (buffer)
       mov       QWORD [rbp - 24], rdx
-; BEGIN PRINTF
+; QWORD [rbp - 48] = rdx (buffer)
+      mov       QWORD [rbp - 48], rbx
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr21);
       xor       rax, rax
       mov       rdi, fmt
       mov       rsi, hdr21
       ALIGN_STACK_AND_CALL rbx, printf, wrt, ..plt
-; END PRINTF
+%endif
 ; if (node == NULL) return NULL;
       mov       rdi, QWORD [rbp - 8]
       mov       rax, rdi
@@ -2367,7 +2481,8 @@ b_search_tree:
       mov       rdx, QWORD [rbp - 24]
       call      b_search
 .epilogue:
-      pop       rbx
+; rbx = QWORD [rbp - 48]
+      mov       rbx, QWORD [rbp - 48]
       mov       rsp, rbp
       pop       rbp
       ret
@@ -2391,6 +2506,8 @@ b_search_tree:
 ;   QWORD [rbp - 32]  = (node_z)
 ;   QWORD [rbp - 40]  = (size_t o_size)
 ;   QWORD [rbp - 48]  = (size_t mindeg)
+;   QWORD [rbp - 56]  = rbx (callee saved)
+;   QWORD [rbp - 64]  = r12 (callee saved)
 ;-------------------------------------------------------------------------------
 ;
       static b_split_child
@@ -2398,15 +2515,17 @@ b_split_child:
 ; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 48
-      push      rbx
-      push      r12
+      sub       rsp, 72
 ; QWORD [rbp - 8] = rdi (node)
       mov       QWORD [rbp - 8], rdi
 ; QWORD [rbp - 16] = rsi (i)
       mov       QWORD [rbp - 16], rsi
 ; QWORD [rbp - 24] = rdx (node_y)
       mov       QWORD [rbp - 24], rdx
+; QWORD [rbp - 56] = rbx (callee saved)
+      mov       QWORD [rbp - 56], rbx
+; QWORD [rbp - 64] = r12 (callee saved)
+      mov       QWORD [rbp - 64], r12
 ; size_t o_size = node->tree->o_size;
       mov       rsi, QWORD [rdi + b_node.tree]
       mov       rax, QWORD [rsi + b_tree.o_size]
@@ -2414,13 +2533,13 @@ b_split_child:
 ; size_t mindeg = node->tree->mindeg;
       mov       rax, QWORD [rsi + b_tree.mindeg]
       mov       QWORD [rbp - 48], rax
-; BEGIN PRINTF
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr22);
       xor       rax, rax
       mov       rdi, fmt
       mov       rsi, hdr22
       ALIGN_STACK_AND_CALL r12, printf, wrt, ..plt
-; END PRINTF
+%endif
 ; b_node_t *node_z = b_node_alloc();
       mov       rdi, 1
       mov       rsi, b_node_size
@@ -2458,12 +2577,14 @@ b_split_child:
       pop       rsi
       mov       rdx, QWORD [rbp - 40]
       call      memmove64 wrt ..plt
-;   if ((x and 7) == 0) pause;  [x/grok]
       inc       rbx
+%ifdef BTREE_PAUSE
+;   if ((x and 7) == 0) pause;  [x/grok]
       test      rbx, 7
       jnz       .pause_1
       pause
 .pause_1:
+%endif
       jmp       .object_move_loop
 ; }
 .object_move_break:
@@ -2488,12 +2609,14 @@ b_split_child:
       mov       rsi, rbx
       call      b_child_at
       pop       QWORD [rax]
-;     if ((x and 7) == 0) pause;  [x/grok]
       inc       rbx
+%ifdef BTREE_PAUSE
+;     if ((x and 7) == 0) pause;  [x/grok]
       test      rbx, 7
       jnz       .pause_2
       pause
 .pause_2:
+%endif
       jmp       .child_move_loop
 ;   }
 .child_move_break:
@@ -2520,11 +2643,13 @@ b_split_child:
       inc       rsi
       call      b_child_at
       pop       QWORD [rax]
+%ifdef BTREE_PAUSE
 ;   if ((x and 7) == 0) pause;  [x/grok]
       test      rbx, 7
       jnz       .pause_3
       pause
 .pause_3:
+%endif
       dec       rbx
       mov       rdi, QWORD [rbp - 8]
       jmp       .child_move_loop_2
@@ -2554,11 +2679,13 @@ b_split_child:
       pop       rsi
       mov       rdx, QWORD [rbp - 40]
       call      memmove64 wrt ..plt
+%ifdef BTREE_PAUSE
 ;   if ((x and 7) == 0) pause;  [x/grok]
       test      rbx, 7
       jnz       .pause_4
       pause
 .pause_4:
+%endif
       dec       rbx
       mov       rdi, QWORD [rbp - 8]
       jmp       .object_move_loop_2
@@ -2584,8 +2711,10 @@ b_split_child:
       inc       rax
       mov       QWORD [rdi + b_node.nobj], rax
 .epilogue:
-      pop       r12
-      pop       rbx
+; r12 = QWORD [rbp - 64]
+      mov       r12, QWORD [rbp - 64]
+; rbx = QWORD [rbp - 56]
+      mov       rbx, QWORD [rbp - 56]
       mov       rsp, rbp
       pop       rbp
       ret
@@ -2603,21 +2732,25 @@ b_split_child:
 ;
 ;   QWORD [rbp - 8]   = rdi (node)
 ;   QWORD [rbp - 16]  = rsi (b_delete_cb o_del_cb)
+;   QWORD [rbp - 24]  = rbx (callee saved)
+;   QWORD [rbp - 32]  = r12 (callee saved)
 ;-------------------------------------------------------------------------------
 ;
       static b_terminate
 b_terminate:
-; prologue:
+; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 16
-      push      rbx
-      push      r12
+      sub       rsp, 40
 ; QWORD [rbp - 8] = rdi (node)
       mov       QWORD [rbp - 8], rdi
 ; QWORD [rbp - 16] = rsi (b_delete_cb o_del_cb)
       mov       QWORD [rbp - 16], rsi
-; BEGIN PRINTF
+; QWORD [rbp - 24] = rbx (callee saved)
+      mov       QWORD [rbp - 24], rbx
+; QWORD [rbp - 32] = r12 (callee saved)
+      mov       QWORD [rbp - 32], r12
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr23);
       xor       rax, rax
       mov       rdi, fmt
@@ -2625,7 +2758,7 @@ b_terminate:
       ALIGN_STACK_AND_CALL r12, printf, wrt, ..plt
       mov       rdi, QWORD [rbp - 8]
       mov       rsi, QWORD [rbp - 16]
-; END PRINTF
+%endif
 ; size_t i;
 ; for (x = 0; x < node->nobj; x++) {
       xor       rbx, rbx
@@ -2649,12 +2782,14 @@ b_terminate:
       mov       rdi, rax
       mov       rcx, QWORD [rbp - 16]
       ALIGN_STACK_AND_CALL r12, rcx
-;   if ((x and 7) == 0) pause;  [x/grok]
       inc       rbx
+%ifdef BTREE_PAUSE
+;   if ((x and 7) == 0) pause;  [x/grok]
       test      rbx, 7
       jnz       .pause
       pause
 .pause:
+%endif
       mov       rdi, QWORD [rbp - 8]
       jmp       .loop
 ; }
@@ -2673,8 +2808,10 @@ b_terminate:
       mov       rdi, QWORD [rbp - 8]
       ALIGN_STACK_AND_CALL r12, free, wrt, ..plt
 .epilogue:
-      pop       r12
-      pop       rbx
+; r12 = QWORD [rbp - 32]
+      mov       r12, QWORD [rbp - 32]
+; rbx = QWORD [rbp - 24]
+      mov       rbx, QWORD [rbp - 24]
       mov       rsp, rbp
       pop       rbp
       ret
@@ -2693,6 +2830,8 @@ b_terminate:
 ;
 ;   QWORD [rbp - 8]   = rdi (node)
 ;   QWORD [rbp - 16]  = rsi (walk_cb)
+;   QWORD [rbp - 24]  = rbx (callee saved)
+;   QWORD [rbp - 32]  = r12 (callee saved)
 ;-------------------------------------------------------------------------------
 ;
       static b_traverse
@@ -2700,14 +2839,16 @@ b_traverse:
 ; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 16
-      push      rbx
-      push      r12
+      sub       rsp, 40
 ; QWORD [rbp - 8] = rdi (node)
       mov       QWORD [rbp - 8], rdi
 ; QWORD [rbp - 16] = rsi (walk_cb)
       mov       QWORD [rbp - 16], rsi
-; BEGIN PRINTF
+; QWORD [rbp - 24] = rbx (callee saved)
+      mov       QWORD [rbp - 24], rbx
+; QWORD [rbp - 32] = r12 (callee saved)
+      mov       QWORD [rbp - 32], r12
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr24);
       xor       rax, rax
       mov       rdi, fmt
@@ -2715,7 +2856,7 @@ b_traverse:
       ALIGN_STACK_AND_CALL r12, printf, wrt, ..plt
       mov       rdi, QWORD [rbp - 8]
       mov       rsi, QWORD [rbp - 16]
-; END PRINTF
+%endif
 ; for (i = 0; i < node->nobj; i++) {
       xor       rbx, rbx
 .loop:
@@ -2738,12 +2879,14 @@ b_traverse:
       mov       rdi, rax
       mov       rcx, QWORD [rbp - 16]
       ALIGN_STACK_AND_CALL r12, rcx
-;   if ((x and 7) == 0) pause;  [x/grok]
       inc       rbx
+%ifdef BTREE_PAUSE
+;   if ((x and 7) == 0) pause;  [x/grok]
       test      rbx, 7
       jnz       .pause
       pause
 .pause:
+%endif
       mov       rdi, QWORD [rbp - 8]
       jmp       .loop
 ; }
@@ -2759,8 +2902,10 @@ b_traverse:
       mov       rsi, QWORD [rbp - 16]
       call      b_traverse
 .epilogue:
-      pop         r12
-      pop         rbx
+; r12 = QWORD [rbp - 32]
+      mov       r12, QWORD [rbp - 32]
+; rbx = QWORD [rbp - 24]
+      mov       rbx, QWORD [rbp - 24]
       mov         rsp, rbp
       pop         rbp
       ret
@@ -2784,7 +2929,8 @@ b_traverse:
 ;
 ; stack:
 ;
-;   QWORD [rbp - 8] = rdi (tree)
+;   QWORD [rbp - 8]   = rdi (tree)
+;   QWORD [rbp - 16]  = rbx (callee saved)
 ;
 ; return:
 ;
@@ -2796,10 +2942,11 @@ b_tree_init:
 ; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 8
-      push      rbx
+      sub       rsp, 24
 ; QWORD [rbp - 8] = rdi (tree)
       mov       QWORD [rbp - 8], rdi
+; QWORD [rbp - 16] = rbx (callee saved)
+      mov       QWORD [rbp - 16], rbx
 ; tree->mindeg = mindeg;
       mov       QWORD [rdi + b_tree.mindeg], rsi
 ; tree->o_size = o_size;
@@ -2839,16 +2986,17 @@ b_tree_init:
       mov       eax, -1   ; return -1;
       jmp       .epilogue
 .end_if_2:
-; BEGIN PRINTF
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr25);
       xor       rax, rax
       mov       rdi, fmt
       mov       rsi, hdr25
       ALIGN_STACK_AND_CALL rbx, printf, wrt, ..plt
-; END PRINTF
+%endif
       xor       rax, rax  ; return 0;
 .epilogue:
-      pop       rbx
+; rbx = QWORD [rbp - 16]
+      mov       rbx, QWORD [rbp - 16]
       mov       rsp, rbp
       pop       rbp
       ret
@@ -2864,7 +3012,8 @@ b_tree_init:
 ;
 ; stack:
 ;
-;   QWORD [rbp - 8] = rdi (tree)
+;   QWORD [rbp - 8]   = rdi (tree)
+;   QWORD [rbp - 16]  = rbx (callee saved)
 ;
 ; brief:
 ;
@@ -2875,21 +3024,22 @@ b_tree_init:
 ;
       global b_tree_term:function
 b_tree_term:
-; prologue:
+; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 8
-      push      r12
+      sub       rsp, 24
 ; QWORD [rbp - 8] = rdi (tree)
       mov       QWORD [rbp - 8], rdi
-; BEGIN PRINTF
+; QWORD [rbp - 16] = rbx (callee saved)
+      mov       QWORD [rbp - 16], rbx
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr26);
       xor       rax, rax
       mov       rdi, fmt
       mov       rsi, hdr26
-      ALIGN_STACK_AND_CALL r12, printf, wrt, ..plt
+      ALIGN_STACK_AND_CALL rbx, printf, wrt, ..plt
       mov       rdi, QWORD [rbp - 8]
-; END PRINTF
+%endif
 ; if (tree->root != NULL) {
       mov       rax, QWORD [rdi + b_tree.root]
       test      rax, rax
@@ -2903,9 +3053,10 @@ b_tree_term:
       mov       rdi, QWORD [rbp - 8]
       mov       rax, QWORD [rdi + b_tree.rwlock]
       mov       rdi, rax
-      ALIGN_STACK_AND_CALL r12, pthread_rwlock_destroy, wrt, ..plt
+      ALIGN_STACK_AND_CALL rbx, pthread_rwlock_destroy, wrt, ..plt
 .epilogue:
-      pop       r12
+; rbx = QWORD [rbp - 16]
+      mov       rbx, QWORD [rbp - 16]
       mov       rsp, rbp
       pop       rbp
       ret
@@ -2924,6 +3075,7 @@ b_tree_term:
 ;
 ;   QWORD [rbp - 8]   = rdi (tree)
 ;   QWORD [rbp - 16]  = rsi (walk_cb)
+;   QWORD [rbp - 24]  = rbx (callee saved)
 ;-------------------------------------------------------------------------------
 ;
       global b_walk:function
@@ -2931,19 +3083,20 @@ b_walk:
 ; prologue
       push      rbp
       mov       rbp, rsp
-      sub       rsp, 16
-      push      rbx
+      sub       rsp, 24
 ; QWORD [rbp - 8] = rdi (tree)
       mov       QWORD [rbp - 8], rdi
 ; QWORD [rbp - 16] = rsi (walk_cb)
       mov       QWORD [rbp - 16], rsi
-; BEGIN PRINTF
+; QWORD [rbp - 24] = rbx (callee saved)
+      mov       QWORD [rbp - 24], rbx
+%ifdef BTREE_DEBUG
 ; printf(fmt, hdr27);
       xor       rax, rax
       mov       rdi, fmt
       mov       rsi, hdr27
       ALIGN_STACK_AND_CALL rbx, printf, wrt, ..plt
-; END PRINTF
+%endif
 ; if (tree->root == NULL) return;
       mov       rdi, QWORD [rbp - 8]
       mov       rax, QWORD [rdi + b_tree.root]
@@ -2965,7 +3118,8 @@ b_walk:
       mov       rdi, rax
       ALIGN_STACK_AND_CALL rbx, pthread_rwlock_unlock, wrt, ..plt
 .epilogue:
-      pop       rbx
+; rbx = QWORD [rbp - 24]
+      mov       rbx, QWORD [rbp - 24]
       mov       rsp, rbp
       pop       rbp
       ret
