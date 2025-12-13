@@ -30,6 +30,22 @@ Current project: Thread-safe B-Tree in pure assembly — 58k ops/sec under conte
 
 ---
 
+## About the Implementation
++ Correct B-Tree insertion (splitting), deletion (merge/borrow), search
++ Minimum degree (t) properly respected (2t−1 keys max, t−1 min except root)
++ Custom object size support (not just integers)
++ Pluggable compare/get-key/delete callbacks
++ Efficient binary search + linear hunt fallback (HUNT_MAX = 9)
++ Smart node memory layout: child[] and object[] in one contiguous block
++ 16-byte stack alignment macro for C calls
++ Full pthread_rwlock protection
++ Custom fast memmove64 in assembly
++ Multithreaded stress test inserting/removing millions of records concurrently
+
+---
+
+---
+
 ## ScreenShots
 
 <img width="639" height="409" alt="BTree_MT_Screenshot _20251213_153034" src="https://github.com/user-attachments/assets/0768dee1-6d28-4800-97ba-fe9b8bafd366" /><br>
