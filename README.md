@@ -1,15 +1,14 @@
-
 ---
 
-
-
 by Jerry McIntosh
+
 ---
 
 # - WHY HIRE ME -
 Systems programmer specializing in low-level optimization and x86-64 assembly.  
 Expert at translating C algorithms into hand-tuned assembly for maximum CPU performance.  
-Thrive on bare-metal coding, memory efficiency, and concurrent data structures.  
+Thrive on bare-metal coding, memory efficiency, and concurrent data structures.
+
 Current project: Thread-safe B-Tree in pure assembly — 58k ops/sec under contention on laptop hardware.
 
 ---
@@ -28,6 +27,13 @@ Current project: Thread-safe B-Tree in pure assembly — 58k ops/sec under conte
 > Single global pthread_rwlock — conservative, deadlock-free design.  
 > Survives extreme rebalancing contention on a laptop.  
 > Run script: `./go_demo.sh` (multiple runs recommended for averaging)
+
+---
+
+<img width="639" height="409" alt="BTree_MT_Screenshot _20251213_153034" src="https://github.com/user-attachments/assets/0768dee1-6d28-4800-97ba-fe9b8bafd366" />
+<img width="335" height="464" alt="BTree_MT_Output_20251213_153154" src="https://github.com/user-attachments/assets/300d38b3-44d4-416d-ab77-b069b5d5c881" />
+<img width="635" height="47" alt="BTree_MT_LSCPU_20251213_153325" src="https://github.com/user-attachments/assets/5d82c12d-b763-4273-815b-dbb713ecda3c" />
+
 
 ---
 
