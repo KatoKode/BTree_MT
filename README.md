@@ -4,6 +4,16 @@ by Jerry McIntosh
 
 ---
 
+# Why DSA Implementations in Assembly Language?
+
++ Assembly implementations of anything are rare.
++ DSA implementations in Assembly are even rare.
++ What performance gain would be achieved?
++ The challenge and what could I learn.
++ I have always enjoyed writing close to the metal.
+
+---
+
 # - WHY HIRE ME -
 Systems programmer specializing in low-level optimization and x86-64 assembly.  
 Expert at translating C algorithms into hand-tuned assembly for maximum CPU performance.  
@@ -18,11 +28,11 @@ Current project: Thread-safe B-Tree in pure assembly — 58k ops/sec under conte
 ## Multithreaded Performance (December 13, 2025 — Dell XPS 15 9510, i7-11800H 8c/16t)
 
 | Phase                          | Threads | Ops per Thread | Total Operations     | Workload Type                                   | Wall Time (avg) | Throughput (avg)    |
-|--------------------------------|---------|----------------|----------------------|-------------------------------------------------|-----------------|---------------------|
-| 1. Concurrent inserts          | 4       | 524,288        | 2,097,152 inserts    | Low contention                                  |                 |                     |
-| 2. Concurrent insert + delete  | 8       | 524,288        | 4,194,304 inserts    |                                                 |                 |                     |
-|                                |         |                | 4,194,304 deletes    | **High contention** (splits + merges + borrows) |                 |                     |
-| **Total**                      | up to 8 |                | **8,388,608 mixed**  | Thread-safe, global rwlock                      | **~143 s**      | **~58,800 ops/sec** |
+|--------------------------------|---------|----------------|---------------------|-------------------------------------------------|-----------------|---------------------|
+| 1. Concurrent inserts          | 4       | 524,288        | 2,097,152 inserts   | Low contention                                  |                 |                     |
+| 2. Concurrent insert + delete  | 8       | 524,288        | 4,194,304 inserts   |                                                 |                 |                     |
+|                                |         |                | 4,194,304 deletes   | **High contention** (splits + merges + borrows) |                 |                     |
+| **Total**                      | up to 8 |                | **8,388,608 mixed** | Thread-safe, global rwlock                      | **~143 s**      | **~58,800 ops/sec** |
 
 > Single global pthread_rwlock — conservative, deadlock-free design.  
 > Survives extreme rebalancing contention on a laptop.  
