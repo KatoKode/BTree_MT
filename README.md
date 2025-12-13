@@ -75,12 +75,12 @@ To modify this define I recommend changing the 256. Modifying this define will c
 
 NOTE: The demo program will not check for a negative value for `DATA_COUNT`.
 
-This demo uses multi-threading to demonstrate the integrity of the BTree(MT) library when in use by multiple users at the same time.  The program will launch two threads that each insert 65,536 objects into the tree, resulting in a total of 131,072 objects being inserted into the tree.  Then a tree walk is preformed that will output the 131,072 objects.  Next four threads are launched: two threads will delete the 131,072 objects in the tree, while two more threads insert another 65,536 objects each, resulting in a total of 131,072 objects in the tree.  All this can be confirmed by the output file `out.txt` in the `demo` folder.
+This demo uses multi-threading to demonstrate the integrity of the BTree(MT) library when in use by multiple users at the same time.  The program will launch four threads that each insert 524,288 objects into the tree, resulting in a total of 2,097,151 objects being inserted into the tree.  Then a tree walk is preformed that will output the 2,097,151 objects.  Next eight threads are launched: four threads will delete the 524,288 objects in the tree, while four more threads insert another 524,288 objects each, resulting in a total of 2,097,151 objects in the tree.  All this can be confirmed by the output file `out.txt` in the `demo` folder.
 
-Best was to search the `out.txt` file:
+Best way to search the `out.txt` file:
 
 + Search for `tree walk` to find the beginning of a tree walk.
-+ Search for `131072:` to find the last object output from a tree walk.
++ Search for `2097151:` to find the last object output from a tree walk.
 
 Also, the BTree insert function will look for a duplicate object before performing an insertion.  If a duplicate exists in the BTree, the insertion function will return without performing an insertion.  In other words, duplicate keys are not aloud in this version of BTree.
 
