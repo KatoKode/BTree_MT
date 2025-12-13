@@ -1,29 +1,44 @@
 
 ---
 
-Multi-Threaded BTree Implementation in x86_64 Assembly Language as a Shared Library with a C interface
+
 
 by Jerry McIntosh
+---
+
+# - WHY HIRE ME -
+Systems programmer specializing in low-level optimization and x86-64 assembly.  
+Expert at translating C algorithms into hand-tuned assembly for maximum CPU performance.  
+Thrive on bare-metal coding, memory efficiency, and concurrent data structures.  
+Current project: Thread-safe B-Tree in pure assembly — 58k ops/sec under contention on laptop hardware.
 
 ---
 
 ## Real-World Performance (Dec 2025)
 
-| Machine                  | CPU                     | RAM       | Operations          | Wall Time   | Sustained Throughput     |
-|--------------------------|-------------------------|-----------|---------------------|-------------|--------------------------|
-| Dell XPS 15 9510         | i7-11800H (8c/16t)      | 32 GB DDR4| 4,194,304 (ins+del) | 135.6 s     | **31,000 ops/sec**       |
-| (single-threaded test)   | Tiger Lake, 45 W TDP    |           |                     |             | **~1.95 M ops/sec/core** |
+## Multithreaded Performance (December 13, 2025 — Dell XPS 15 9510, i7-11800H 8c/16t)
 
-> Fully thread-safe (pthread_rwlock), generic object size, zero external dependencies.
+| Phase                          | Threads | Ops per Thread | Total Operations     | Workload Type                                   | Wall Time (avg) | Throughput (avg)    |
+|--------------------------------|---------|----------------|----------------------|-------------------------------------------------|-----------------|---------------------|
+| 1. Concurrent inserts          | 4       | 524,288        | 2,097,152 inserts    | Low contention                                  |                 |                     |
+| 2. Concurrent insert + delete  | 8       | 524,288        | 4,194,304 inserts    |                                                 |                 |                     |
+|                                |         |                | 4,194,304 deletes    | **High contention** (splits + merges + borrows) |                 |                     |
+| **Total**                      | up to 8 |                | **8,388,608 mixed**  | Thread-safe, global rwlock                      | **~143 s**      | **~58,800 ops/sec** |
+
+> Single global pthread_rwlock — conservative, deadlock-free design.  
+> Survives extreme rebalancing contention on a laptop.  
+> Run script: `./go_demo.sh` (multiple runs recommended for averaging)
 
 ---
 
 # INTRODUCTION
-This is an Assembly Language implementation of a multi-threaded BTree (Multiway-Tree).  The BTree is implemented as a shared-library with a C interface.  There is also a C demo program.
+This is an Assembly Language implementation of a multi-threaded BTree (Multiway-Tree).  The BTree is implemented as a shared-library with a C interface.  There is also a C demo/benchmark program.
 
 The BTree implementaton is based on a C++ implementation found at:
 
 [GeeksforGeeks: Delete Operation in B-Tree](https://www.geeksforgeeks.org/delete-operation-in-b-tree/?ref=lbp)
+
+which is close to the CLRS implementation. Translated to C, then fully reimplemented in x86-64 assembly for maximum performance and control.
 
 ## LIST OF REQUIREMENTS
 
