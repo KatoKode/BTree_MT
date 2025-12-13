@@ -35,47 +35,92 @@ int main (int argc, char *argv[]) {
         o_del_cb, k_get_cb) < 0) return -1;
   // initialize insert meta 1 structure and launch thread 1
   meta_t meta_1 =
-  { tree, 1000000, 10000000, calloc(DATA_COUNT * 0.25, sizeof(long)) };
+  { tree, 1000000, 5000000, calloc(DATA_COUNT * PERCENT_DC, sizeof(long)) };
   pthread_t thrd_1;
   (void) pthread_create(&thrd_1, NULL, insert_data, &meta_1);
   // initialize insert meta 2 structure and launch thread 2
   meta_t meta_2 =
-  { tree, 10000001, 20000000, calloc(DATA_COUNT * 0.25, sizeof(long)) };
+  { tree, 5000001, 10000000, calloc(DATA_COUNT * PERCENT_DC, sizeof(long)) };
   pthread_t thrd_2;
   (void) pthread_create(&thrd_2, NULL, insert_data, &meta_2);
+  // initialize insert meta 3 structure and launch thread 3
+  meta_t meta_3 =
+  { tree, 10000001, 15000000, calloc(DATA_COUNT * PERCENT_DC, sizeof(long)) };
+  pthread_t thrd_3;
+  (void) pthread_create(&thrd_3, NULL, insert_data, &meta_3);
+  // initialize insert meta 4 structure and launch thread 4
+  meta_t meta_4 =
+  { tree, 15000001, 20000000, calloc(DATA_COUNT * PERCENT_DC, sizeof(long)) };
+  pthread_t thrd_4;
+  (void) pthread_create(&thrd_4, NULL, insert_data, &meta_4);
   int retval;
   void *retptr = &retval;
   // wait on threads to complete
+  (void) pthread_join(thrd_4, &retptr);
+  if (*((int *)retptr) < 0) return -1;
+  (void) pthread_join(thrd_3, &retptr);
+  if (*((int *)retptr) < 0) return -1;
   (void) pthread_join(thrd_2, &retptr);
   if (*((int *)retptr) < 0) return -1;
   (void) pthread_join(thrd_1, &retptr);
   if (*((int *)retptr) < 0) return -1;
   // walk the tree and output data_t structure
   walk_tree(tree);
-  // launch thread 3 with insert meta 1 structure
-  pthread_t thrd_3;
-  (void) pthread_create(&thrd_3, NULL, remove_data, &meta_1);
-  // initialize insert meta 3 structure and launch thread 4
-  meta_t meta_3 =
-  { tree, 40000001, 60000000, calloc(DATA_COUNT * 0.25, sizeof(long)) };
-  pthread_t thrd_4;
-  (void) pthread_create(&thrd_4, NULL, insert_data, &meta_3);
-  // launch thread 5 with insert meta 2 structure
+  // launch thread 5 with insert meta 1 structure
   pthread_t thrd_5;
-  (void) pthread_create(&thrd_5, NULL, remove_data, &meta_2);
-  // initialize insert meta 3 structure and launch thread 6
-  meta_t meta_4 =
-  { tree, 20000001, 40000000, calloc(DATA_COUNT * 0.25, sizeof(long)) };
+  (void) pthread_create(&thrd_5, NULL, remove_data, &meta_1);
+  // initialize insert meta 5 structure and launch thread 5
+  meta_t meta_6 =
+  { tree, 20000001, 25000000, calloc(DATA_COUNT * PERCENT_DC, sizeof(long)) };
   pthread_t thrd_6;
-  (void) pthread_create(&thrd_6, NULL, insert_data, &meta_4);
+  (void) pthread_create(&thrd_6, NULL, insert_data, &meta_6);
+  // sleep a bit
+  struct timespec req = { 0, 250000000 };
+  nanosleep(&req, NULL);
+  // launch thread 7 with insert meta 2 structure
+  pthread_t thrd_7;
+  (void) pthread_create(&thrd_7, NULL, remove_data, &meta_2);
+  // initialize insert meta 8 structure and launch thread 8
+  meta_t meta_8 =
+  { tree, 25000001, 30000000, calloc(DATA_COUNT * PERCENT_DC, sizeof(long)) };
+  pthread_t thrd_8;
+  (void) pthread_create(&thrd_8, NULL, insert_data, &meta_8);
+  // sleep a bit
+  nanosleep(&req, NULL);
+  // launch thread 9 with insert meta 3 structure
+  pthread_t thrd_9;
+  (void) pthread_create(&thrd_9, NULL, remove_data, &meta_3);
+  // initialize insert meta 10 structure and launch thread 10
+  meta_t meta_10 =
+  { tree, 30000001, 35000000, calloc(DATA_COUNT * PERCENT_DC, sizeof(long)) };
+  pthread_t thrd_10;
+  (void) pthread_create(&thrd_10, NULL, insert_data, &meta_10);
+  // sleep a bit
+  nanosleep(&req, NULL);
+  // launch thread 11 with insert meta 2 structure
+  pthread_t thrd_11;
+  (void) pthread_create(&thrd_11, NULL, remove_data, &meta_4);
+  // initialize insert meta 12 structure and launch thread 12
+  meta_t meta_12 =
+  { tree, 35000001, 40000000, calloc(DATA_COUNT * PERCENT_DC, sizeof(long)) };
+  pthread_t thrd_12;
+  (void) pthread_create(&thrd_12, NULL, insert_data, &meta_12);
   // wait on threads to complete
+  (void) pthread_join(thrd_12, &retptr);
+  if (*((int *)retptr) < 0) return -1;
+  (void) pthread_join(thrd_11, &retptr);
+  if (*((int *)retptr) < 0) return -1;
+  (void) pthread_join(thrd_10, &retptr);
+  if (*((int *)retptr) < 0) return -1;
+  (void) pthread_join(thrd_9, &retptr);
+  if (*((int *)retptr) < 0) return -1;
+  (void) pthread_join(thrd_8, &retptr);
+  if (*((int *)retptr) < 0) return -1;
+  (void) pthread_join(thrd_7, &retptr);
+  if (*((int *)retptr) < 0) return -1;
   (void) pthread_join(thrd_6, &retptr);
   if (*((int *)retptr) < 0) return -1;
   (void) pthread_join(thrd_5, &retptr);
-  if (*((int *)retptr) < 0) return -1;
-  (void) pthread_join(thrd_4, &retptr);
-  if (*((int *)retptr) < 0) return -1;
-  (void) pthread_join(thrd_3, &retptr);
   if (*((int *)retptr) < 0) return -1;
   // walk the tree and output data_t structure
   walk_tree(tree);
@@ -87,6 +132,8 @@ int main (int argc, char *argv[]) {
   // release memory held by all the data_t structures (if any), as well as, all
   // the memory held by the tree
   term_tree(tree);
+  // flush I/O
+  fflush(stdout);
 
   return 0;
 }
@@ -116,8 +163,9 @@ int k_cmp_cb (void const * vp1, void const * vp2) {
 // callback that returns the key of a data structure
 void const * k_get_cb (void const *vp) {
   data_t const *dp = vp;
-
+#ifdef BTREE_DEBUG
   printf("%s: lng:\t%ld\n", __func__, dp->lng);
+#endif
   // return structure key
   return &dp->lng;
 }
@@ -125,20 +173,26 @@ void const * k_get_cb (void const *vp) {
 // callback that processes a data structure before deletion from tree
 //
 void o_del_cb (void const *vp) {
+#ifdef BTREE_DEBUG
   data_t const *d = vp;
   print_data(__func__, d);
+#endif
 }
 //
 // output a data structure
 //
 void print_data (char const *s, data_t const *d) {
+#ifdef BTREE_DEBUG
   printf("%s:  lng: % 8ld\tstr: %8s\n", s, d->lng, d->str);
+#endif
 }
 //
 // terminate a tree
 //
 void term_tree (b_tree_t *tree) {
+#ifdef BTREE_DEBUG
   puts("\n---| term tree |---\n");
+#endif
   b_tree_term(tree);
   b_tree_free(tree);
 }
@@ -175,7 +229,7 @@ void * insert_data (void * vp)
   struct timespec req = { 0, 250000000 };
   nanosleep(&req, NULL);
   // insert data structures loop
-  for (size_t i = 0; i < DATA_COUNT * 0.25; ++i) {
+  for (size_t i = 0; i < DATA_COUNT * PERCENT_DC; ++i) {
     data_t d;
     size_t x = 0;
     size_t y = 0;
@@ -211,10 +265,12 @@ void * remove_data (void * vp)
 
   size_t x = 0;
   // remove data structures loop
-  for (size_t i = 0; i < DATA_COUNT * 0.25; ++i) {
-    puts("\n---| begin delete |---\n");
+  for (size_t i = 0; i < DATA_COUNT * PERCENT_DC; ++i) {
     // yield the CPU when dealing with duplicates
     if ((x++ % REM_MOD_BY) == 0) sched_yield();
+#ifdef BTREE_DEBUG
+    puts("\n---| begin delete |---\n");
+#endif
     // remove target data structure from tree
     b_remove(((meta_t *)vp)->tree, &((meta_t *)vp)->lng[i]);
   }

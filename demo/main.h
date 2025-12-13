@@ -25,7 +25,8 @@
 #include "../util/util.h"
 
 // defines you can modify
-#define DATA_COUNT      (256 * 1024)
+#define DATA_COUNT      (4096 * 1024)
+#define PERCENT_DC      0.125
 
 // defines you should not modify
 #define STR_LEN         15
