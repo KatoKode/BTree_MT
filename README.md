@@ -76,7 +76,8 @@ In folder `demo` enter the following command:
 # THINGS TO KNOW
 You can modify a define in the C header file `main.h` in the `demo` folder:
 ```c
-#define DATA_COUNT    (256 * 1024)
+#define DATA_COUNT      (4096 * 1024)
+#define PERCENT_DC      0.125
 ```
 To modify this define I recommend changing the 256. Modifying this define will change the behavior of the demo program and it's output.
 
