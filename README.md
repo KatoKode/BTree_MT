@@ -84,7 +84,7 @@ Best was to search the `out.txt` file:
 
 Also, the BTree insert function will look for a duplicate object before performing an insertion.  If a duplicate exists in the BTree, the insertion function will return without performing an insertion.  In other words, duplicate keys are not aloud in this version of BTree.
 
-There are calls to `printf` in the `btree.asm` file.  They are for demo purposes only and can be removed or commented out.  The `printf` code sections are marked with comment lines: `BEGIN PRINTF`; and `END PRINTF`.  The format and text strings passed to `printf` are in the `.data` section of the `btree.asm` file.
+There are calls to `printf` in the `btree.asm` file.  They are for demo purposes only and exist in conditional-blocks controled by the existence of macro BTREE_DEBUG. The format and text strings passed to `printf` are in the `.data` section of the `btree.asm` file within a conditional-block.
 
 Have Fun!
 
